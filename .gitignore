@@ -57,6 +57,11 @@ fit-dtb.blob*
 !.mailmap
 !.get_maintainer.*
 
+#################### PSIONIC CHANGE ###########################
+# Technically you aren't supposed to keep the .config file,
+# but it's the simplest way to handle it for our purposes.
+!.config
+
 #
 # Generated files
 #
