@@ -920,6 +920,25 @@ static int zynq_gem_probe(struct udevice *dev)
 	       (ulong)priv->iobase, (ulong)priv->mdiobase, priv->phydev->addr,
 	       phy_string_for_interface(priv->interface));
 
+    /*
+     * These calls have to be here for the ethernet to initialize. The only
+     * alternative I found was putting a ping in the boot.scr, but that
+     * wastes some time waiting for a timeout.
+     *
+     * This function is called during the default u-boot process. It
+     * initializes the GEM (Gigabit Ethernet Controller). The GEM
+     * allows the Xilinx CPU to communicate with an external
+     * ethernet interface, but does not provide ethernet itself
+     * (because a board may just not have ethernet).
+     *
+     * Basically what I'm doing by adding these calls is hitching the
+     * setup of the external ethernet to the setup of the GEM, since
+     * for our purposes we know it's there. Adding these here leads
+     * to the ksz90xx_startup() function (also modified) being
+     * called. 
+     */
+	net_init();
+	eth_init();
 	return ret;
 
 err3:

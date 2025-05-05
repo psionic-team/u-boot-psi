@@ -44,26 +44,49 @@
 
 static int ksz90xx_startup(struct phy_device *phydev)
 {
-	unsigned phy_ctl;
-	int ret;
+    /*
+     * This section is highly modified from what it was originally.
+     *
+     * The "phy_extended_write" calls adjust some clock skew values
+     * and this is a sensible place to do it.
+     *
+     *
+     * The phydev writes are a way to side-step autonegotiation.
+     * For some reason, these values will NOT update properly
+     * if autonegotiation completes while Deos is running.
+     *
+     * It's almost certainly possible to write these registers
+     * from Deos, but unfortunately the phy doesn't have a set
+     * place in memory like most hardware. So it's easier to
+     * do it here.
+     *
+     * The register writes tell the phy that the link is active,
+     * sets the speed to 100 Mb/s, and makes it full duplex.
+     *
+     * Half duplex is practically extinct, so that should be fine.
+     * Our phy does not support 1000 Mb/s, and 10 Mb/s devices are
+     * rare, so the speed_100 should be fine. It would be trivial
+     * to change if it does cause a problem at some point.
+     */
 
-	ret = genphy_update_link(phydev);
-	if (ret)
-		return ret;
+	phydev->autoneg = AUTONEG_DISABLE;
+	phydev->link = 1;
 
-	phy_ctl = phy_read(phydev, MDIO_DEVAD_NONE, MII_KSZ90xx_PHY_CTL);
+    phydev->duplex = DUPLEX_FULL;
+    phydev->speed = SPEED_100;
 
-	if (phy_ctl & MIIM_KSZ90xx_PHYCTL_DUPLEX)
-		phydev->duplex = DUPLEX_FULL;
-	else
-		phydev->duplex = DUPLEX_HALF;
 
-	if (phy_ctl & MIIM_KSZ90xx_PHYCTL_1000)
-		phydev->speed = SPEED_1000;
-	else if (phy_ctl & MIIM_KSZ90xx_PHYCTL_100)
-		phydev->speed = SPEED_100;
-	else if (phy_ctl & MIIM_KSZ90xx_PHYCTL_10)
-		phydev->speed = SPEED_10;
+	ksz9031_phy_extended_write(phydev, 0x02,
+				   MII_KSZ9031_EXT_RGMII_RX_DATA_SKEW,
+				   MII_KSZ9031_MOD_DATA_NO_POST_INC, 0x0000);
+	/* tx data pad skew - devaddr = 0x02, register = 0x05 */
+	ksz9031_phy_extended_write(phydev, 0x02,
+				   MII_KSZ9031_EXT_RGMII_TX_DATA_SKEW,
+				   MII_KSZ9031_MOD_DATA_NO_POST_INC, 0x0000);
+	/* gtx and rx clock pad skew - devaddr = 0x02, register = 0x08 */
+	ksz9031_phy_extended_write(phydev, 0x02,
+				   MII_KSZ9031_EXT_RGMII_CLOCK_SKEW,
+				   MII_KSZ9031_MOD_DATA_NO_POST_INC, 0x03FF);
 	return 0;
 }
 
