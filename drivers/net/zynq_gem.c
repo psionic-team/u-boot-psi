@@ -497,7 +497,16 @@ static int zynq_gem_init(struct udevice *dev)
 
 	if (!priv->phydev->link) {
 		printf("%s: No link.\n", priv->phydev->dev->name);
-		return -1;
+        /*************** PSIONIC CHANGE *******************
+         * We do NOT want to return here. We just hardcode
+         * link speeds to 100mbps (in micrel_ksz90x1.c, 
+         * hopefully temporarily)and proceed with the rest
+         * of init assuming that speed is correct.
+         *
+         * If we return here, ethernet TX/RX clocks will
+         * not be set up.
+         */
+		//return -1;
 	}
 
 	nwconfig = ZYNQ_GEM_NWCFG_INIT;

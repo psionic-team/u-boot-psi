@@ -1,0 +1,19 @@
+setenv ipaddr 10.0.1.82
+setenv netmask 255.255.255.0
+setenv serverip 10.0.1.1
+setenv ethaddr 00:0a:35:00:01:02
+
+
+
+sf probe 0 0 0
+echo "Loading FPGA Image"
+sf read 0x01000000 0x00800000 0x0055209c
+fpga load 0 0x01000000 0x0055209c
+echo "Done"
+sf read 0x0002b000 0x00e00000 0x00600000
+
+dcache flush
+dcache off
+
+go 0x0001b000
+

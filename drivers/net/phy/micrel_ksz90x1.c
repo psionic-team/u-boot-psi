@@ -50,31 +50,37 @@ static int ksz90xx_startup(struct phy_device *phydev)
      * The "phy_extended_write" calls adjust some clock skew values
      * and this is a sensible place to do it.
      *
+     * Usually there's code here which waits for autonegotiation to
+     * complete, then sets ethernet speed/duplex appropriately.
      *
-     * The phydev writes are a way to side-step autonegotiation.
-     * For some reason, these values will NOT update properly
-     * if autonegotiation completes while Deos is running.
+     * For now, we don't want that, because it delays boot a lot.
+     * Additionally, this is a one-time check. So this leads
+     * to problems if ethernet is not plugged in when the system
+     * turns on, because ethernet init fails and is never fixed.
      *
-     * It's almost certainly possible to write these registers
-     * from Deos, but unfortunately the phy doesn't have a set
-     * place in memory like most hardware. So it's easier to
-     * do it here.
+     * What we do for now is just hardcode the speed to 100 Mbps
+     * (our hardware does not support 1Gbps without a mod), and
+     * force initialization to happen even when no link has been
+     * established (accomplished by commenting out a return in
+     * zynqmp_gem.c).
      *
-     * The register writes tell the phy that the link is active,
-     * sets the speed to 100 Mb/s, and makes it full duplex.
+     * Eventually, what we want is to have an ISR handler in Deos
+     * which handles this setup whenever the interrupt related
+     * to autonegotation completion fires. This includes initializing
+     * the clocks at least, and may or may not include setting the
+     * registers for the phy/GEM correctly (I'm not sure if they
+     * are automatically set by hardware when autoneg is done).
      *
-     * Half duplex is practically extinct, so that should be fine.
-     * Our phy does not support 1000 Mb/s, and 10 Mb/s devices are
-     * rare, so the speed_100 should be fine. It would be trivial
-     * to change if it does cause a problem at some point.
+     *
      */
-
-	phydev->autoneg = AUTONEG_DISABLE;
-	phydev->link = 1;
-
-    phydev->duplex = DUPLEX_FULL;
     phydev->speed = SPEED_100;
+    phydev->duplex = DUPLEX_FULL;
 
+
+    // This line disables advertisement of 1 Gbps capability. This shaves
+    // ~10-15 seconds off autonegotiation. Obviously must be removed if
+    // that is enabled at some point.
+    phy_write(phydev, MDIO_DEVAD_NONE, MII_CTRL1000, 0);
 
 	ksz9031_phy_extended_write(phydev, 0x02,
 				   MII_KSZ9031_EXT_RGMII_RX_DATA_SKEW,
